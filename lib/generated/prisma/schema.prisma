@@ -1,0 +1,53 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Note {
+  id         String   @id @default(uuid())
+  title      String
+  content    String?
+  tags       String[] @default([])
+  isStarred  Boolean  @default(false)
+  isArchived Boolean  @default(false)
+  isDeleted  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  type       String   @default("note")
+  events     Event[]
+}
+
+model Tag {
+  id     String  @id @default(uuid())
+  name   String  @unique
+  type   String  @default("folder")
+  color  String?
+  events Event[]
+}
+
+model Event {
+  id             String    @id @default(uuid())
+  title          String
+  description    String?
+  startDate      DateTime
+  endDate        DateTime?
+  isAllDay       Boolean   @default(false)
+  reminderTime   DateTime?
+  noteId         String?
+  note           Note?     @relation(fields: [noteId], references: [id])
+  color          String?
+  tagId          String?
+  tag            Tag?      @relation(fields: [tagId], references: [id])
+  customSoundUrl String?
+}
