@@ -16,7 +16,7 @@ interface NotesState {
   error: string | null
   addNote: (note: Partial<NoteType>) => string
   updateNote: (id: string, updates: Partial<NoteType>) => void
-  deleteNote: (id: string) => void
+  deleteNote: (id: string | string[]) => void
   restoreNote: (id: string) => void
   toggleStarred: (id: string) => void
   toggleArchived: (id: string) => void
@@ -72,20 +72,27 @@ export const useNotesStore = create<NotesState>()(
 
       deleteNote: (id) => {
         set((state) => {
-          const isCurrentlyDeleted = state.notes.find((n) => n.id === id)?.isDeleted
+          const ids = Array.isArray(id) ? id : [id]
+          const notesToDelete = state.notes.filter(note => ids.includes(note.id))
+          const isCurrentlyDeleted = notesToDelete.every(note => note.isDeleted)
 
           // If already in trash, permanently delete
           if (isCurrentlyDeleted) {
+            const count = notesToDelete.length
+            toast.success(`${count} ${count === 1 ? 'note' : 'notes'} permanently deleted`)
             return {
-              notes: state.notes.filter((note) => note.id !== id),
-              activeNote: state.activeNote === id ? null : state.activeNote,
+              notes: state.notes.filter((note) => !ids.includes(note.id)),
+              activeNote: state.activeNote && ids.includes(state.activeNote) ? null : state.activeNote,
             }
           }
 
           // Otherwise, move to trash
+          toast.success("Note moved to trash")
           return {
-            notes: state.notes.map((note) => (note.id === id ? { ...note, isDeleted: true } : note)),
-            activeNote: state.activeNote === id ? null : state.activeNote,
+            notes: state.notes.map((note) => 
+              ids.includes(note.id) ? { ...note, isDeleted: true } : note
+            ),
+            activeNote: state.activeNote && ids.includes(state.activeNote) ? null : state.activeNote,
           }
         })
       },

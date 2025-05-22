@@ -2,6 +2,8 @@
 
 import * as React from "react"
 import * as RechartsPrimitive from "recharts"
+import { useEffect, useRef } from "react"
+import { createChart, ColorType } from "lightweight-charts"
 
 import { cn } from "@/lib/utils"
 
