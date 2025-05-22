@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useNotesStore } from "@/lib/store"
 import {
   FileText,
@@ -27,13 +27,29 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
-import NoteEditor from "@/components/note-editor"
+import dynamic from 'next/dynamic'
+// import NoteEditor from "@/components/note-editor" // Will be dynamically imported
 import NoteList from "@/components/note-list"
-import EmptyNoteState from "@/components/empty-note-state"
+// import EmptyNoteState from "@/components/empty-note-state" // Will be dynamically imported
 import { Checkbox } from "@/components/ui/checkbox"
-import CalendarView from "@/components/calendar-view"
+// import CalendarView from "@/components/calendar-view" // Will be dynamically imported
 import { Toaster } from "sonner"
 import LoadingState from "./loading-state"
+
+const NoteEditor = dynamic(() => import('@/components/note-editor'), {
+  ssr: false,
+  loading: () => <LoadingState />,
+})
+
+const CalendarView = dynamic(() => import('@/components/calendar-view'), {
+  ssr: false,
+  loading: () => <LoadingState />,
+})
+
+const EmptyNoteState = dynamic(() => import('@/components/empty-note-state'), {
+  ssr: false,
+  loading: () => <LoadingState />,
+})
 
 export default function NotesApp() {
   const {
@@ -73,41 +89,45 @@ export default function NotesApp() {
   const [selectedFolderIds, setSelectedFolderIds] = useState<string[]>([])
 
   // Filter notes based on active view and search query
-  const filteredNotes = notes.filter((note) => {
-    let viewMatch = false
-    switch (activeView) {
-      case "notes":
-        viewMatch = !note.isDeleted && !note.isArchived
-        break
-      case "starred":
-        viewMatch = !note.isDeleted && !note.isArchived && note.isStarred
-        break
-      case "archived":
-        viewMatch = !note.isDeleted && note.isArchived
-        break
-      case "trash":
-        viewMatch = note.isDeleted
-        break
-      case "tag":
-        viewMatch = !note.isDeleted && !note.isArchived && activeTag ? note.tags.includes(activeTag) : false
-        break
-    }
+  const filteredNotes = useMemo(() => {
+    return notes.filter((note) => {
+      let viewMatch = false
+      switch (activeView) {
+        case "notes":
+          viewMatch = !note.isDeleted && !note.isArchived
+          break
+        case "starred":
+          viewMatch = !note.isDeleted && !note.isArchived && note.isStarred
+          break
+        case "archived":
+          viewMatch = !note.isDeleted && note.isArchived
+          break
+        case "trash":
+          viewMatch = note.isDeleted
+          break
+        case "tag":
+          viewMatch = !note.isDeleted && !note.isArchived && activeTag ? note.tags.includes(activeTag) : false
+          break
+      }
 
-    const searchMatch = searchNotesQuery
-      ? note.title.toLowerCase().includes(searchNotesQuery.toLowerCase()) ||
-        note.content.toLowerCase().includes(searchNotesQuery.toLowerCase())
-      : true
+      const searchMatch = searchNotesQuery
+        ? note.title.toLowerCase().includes(searchNotesQuery.toLowerCase()) ||
+          note.content.toLowerCase().includes(searchNotesQuery.toLowerCase())
+        : true
 
-    return viewMatch && searchMatch
-  })
+      return viewMatch && searchMatch
+    })
+  }, [notes, activeView, activeTag, searchNotesQuery])
 
   // Filter tags based on search query
-  const filteredTags = tags.filter((tag) =>
-    searchTagsQuery ? tag.name.toLowerCase().includes(searchTagsQuery.toLowerCase()) : true
-  )
+  const filteredTags = useMemo(() => {
+    return tags.filter((tag) =>
+      searchTagsQuery ? tag.name.toLowerCase().includes(searchTagsQuery.toLowerCase()) : true
+    )
+  }, [tags, searchTagsQuery])
 
-  // Get the current view title
-  const getViewTitle = () => {
+  // Memoized view title
+  const viewTitle = useMemo(() => {
     switch (activeView) {
       case "notes":
         return "All Notes"
@@ -123,7 +143,23 @@ export default function NotesApp() {
       case "calendar":
         return "Calendar"
     }
-  }
+  }, [activeView, tags, activeTag])
+
+  // Memoized note counts for static views
+  const allNotesCount = useMemo(() => notes.filter(note => !note.isDeleted && !note.isArchived).length, [notes])
+  const starredNotesCount = useMemo(() => notes.filter(note => !note.isDeleted && !note.isArchived && note.isStarred).length, [notes])
+  const archivedNotesCount = useMemo(() => notes.filter(note => !note.isDeleted && note.isArchived).length, [notes])
+  const trashNotesCount = useMemo(() => notes.filter(note => note.isDeleted).length, [notes])
+
+  // Memoized note counts for tags
+  const notesByTagCount = useMemo(() => {
+    const counts = new Map<string, number>()
+    tags.forEach(tag => {
+      const count = notes.filter(note => !note.isDeleted && !note.isArchived && note.tags.includes(tag.id)).length
+      counts.set(tag.id, count)
+    })
+    return counts
+  }, [notes, tags])
 
   // Handle tag operations
   const handleCreateTag = () => {
@@ -292,7 +328,7 @@ export default function NotesApp() {
                   <FileText className="h-4 w-4" />
                   All Notes
                 </div>
-                <span className="text-sm text-muted-foreground">({notes.filter(note => !note.isDeleted && !note.isArchived).length})</span>
+                <span className="text-sm text-muted-foreground">({allNotesCount})</span>
               </div>
             </Button>
           )}
@@ -319,7 +355,7 @@ export default function NotesApp() {
                   <Star className="h-4 w-4" />
                   Starred
                 </div>
-                <span className="text-sm text-muted-foreground">({notes.filter(note => !note.isDeleted && !note.isArchived && note.isStarred).length})</span>
+                <span className="text-sm text-muted-foreground">({starredNotesCount})</span>
               </div>
             </Button>
           )}
@@ -335,7 +371,7 @@ export default function NotesApp() {
                   <Archive className="h-4 w-4" />
                   Archived
                 </div>
-                <span className="text-sm text-muted-foreground">({notes.filter(note => !note.isDeleted && note.isArchived).length})</span>
+                <span className="text-sm text-muted-foreground">({archivedNotesCount})</span>
               </div>
             </Button>
           )}
@@ -351,7 +387,7 @@ export default function NotesApp() {
                   <Trash className="h-4 w-4" />
                   Trash
                 </div>
-                <span className="text-sm text-muted-foreground">({notes.filter(note => note.isDeleted).length})</span>
+                <span className="text-sm text-muted-foreground">({trashNotesCount})</span>
               </div>
             </Button>
           )}
@@ -431,7 +467,7 @@ export default function NotesApp() {
                         <FolderClosed className="h-4 w-4" style={{ color: tag.color }} />
                         {tag.name}
                       </div>
-                      <span className="text-sm text-muted-foreground ml-auto">({notes.filter(note => !note.isDeleted && !note.isArchived && note.tags.includes(tag.id)).length})</span>
+                      <span className="text-sm text-muted-foreground ml-auto">({notesByTagCount.get(tag.id) || 0})</span>
                     </div>
                     {/* Edit/Delete buttons (show only when not in multi-select mode) */}
                     {!isMultiSelectingFolders && (
@@ -474,7 +510,7 @@ export default function NotesApp() {
         <div className="border-b">
           <div className="flex h-14 items-center gap-4 px-4">
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold">{getViewTitle()}</h2>
+              <h2 className="text-lg font-semibold">{viewTitle}</h2>
               {activeView === "notes" && (
                 <span className="text-sm text-muted-foreground">
                   ({filteredNotes.length} notes)

@@ -9,6 +9,20 @@ import { buttonVariants } from "@/components/ui/button"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
 
+const CustomChevron = (props: { orientation?: 'left' | 'right' | 'up' | 'down', className?: string, size?: number, disabled?: boolean }) => {
+  // The props for CustomChevron should match what react-day-picker's Chevron component expects,
+  // which includes orientation, className, size, disabled.
+  // We only really care about orientation for icon selection.
+  // The className="h-4 w-4" should be applied to the lucide icons.
+  if (props.orientation === 'left') {
+    return <ChevronLeft className="h-4 w-4" />;
+  }
+  if (props.orientation === 'right') {
+    return <ChevronRight className="h-4 w-4" />;
+  }
+  return <></>; // Return empty fragment instead of null
+};
+
 function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
   return (
     <DayPicker
@@ -44,8 +58,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         ...classNames,
       }}
       components={{
-        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
-        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
+        Chevron: CustomChevron,
       }}
       {...props}
     />

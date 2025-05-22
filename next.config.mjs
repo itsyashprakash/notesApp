@@ -1,14 +1,14 @@
+import withBundleAnalyzer from '@next/bundle-analyzer';
+
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  images: {
-    unoptimized: true,
-  },
+let nextConfig = {
+  // ESLint and TypeScript error checking are now re-enabled by removing the ignore flags.
+};
+
+if (process.env.ANALYZE === 'true') {
+  nextConfig = withBundleAnalyzer({
+    enabled: true,
+  })(nextConfig);
 }
 
-export default nextConfig
+export default nextConfig;
