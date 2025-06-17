@@ -338,7 +338,7 @@ export default function CalendarView() {
       customSoundUrlToSave = URL.createObjectURL(customSound)
     } else {
        // If no new file is selected, use the default sound from the public folder
-       customSoundUrlToSave = "/notification-sound/notification-3-337821.mp3";
+       customSoundUrlToSave = "/notification-sound/simple-notification-152054.mp3";
     }
 
     const eventData = {
